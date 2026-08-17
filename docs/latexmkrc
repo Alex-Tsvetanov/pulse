@@ -1,0 +1,13 @@
+# pdfLaTeX, НЕ XeLaTeX (T2A + tempora).
+$pdf_mode = 1;
+$bibtex_use = 2;
+$out_dir = 'build';
+$clean_ext = 'bbl nav out snm synctex.gz run.xml';
+
+# КРИТИЧНО: bibtex се изпълнява с работна директория build/, а не тази папка.
+# Затова `\bibliography{references}` не се разрешава относително и kpathsea намира
+# ЧУЖД файл references.bib от инсталацията на TeX (проверено: пакетът feupphdteses
+# носи такъв). Резултатът е тих: bibtex рапортува „0 entries“ и списъкът с
+# литература излиза празен, без нито една грешка при компилацията.
+# Родителската папка (спрямо build/) се поставя най-отпред в BIBINPUTS.
+$ENV{BIBINPUTS} = '..' . $search_path_separator . ($ENV{BIBINPUTS} // '');
