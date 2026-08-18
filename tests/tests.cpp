@@ -325,8 +325,13 @@ TEST(histogram_quantiles_stay_inside_the_bucket_bounds) {
   CHECK(median > 0.0 && median <= 50.0);
   const double tail = histogram.quantile(0.99);
   CHECK(tail > 1000.0 && tail <= 2000.0);
-  CHECK_EQ(histogram.quantile(0.0), 0.0 + histogram.quantile(0.0));  // no crash at the ends
-  CHECK(histogram.quantile(1.0) <= 2000.0);
+  // The ends are exact, not merely in range: rank 0 sits on the lower edge of the first
+  // bucket, and rank n sits on the upper edge of the bucket that holds the last value.
+  CHECK_EQ(histogram.quantile(0.0), 0.0);
+  CHECK_EQ(histogram.quantile(1.0), 2000.0);
+  // A quantile outside [0, 1] is clamped rather than read off the end of the array.
+  CHECK_EQ(histogram.quantile(-1.0), histogram.quantile(0.0));
+  CHECK_EQ(histogram.quantile(2.0), histogram.quantile(1.0));
 }
 
 TEST(collector_counts_requests_and_reads_the_process) {

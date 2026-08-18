@@ -115,7 +115,7 @@ milliseconds between snapshots, 50 to 5000).
 ctest --test-dir build --output-on-failure
 ```
 
-35 cases, 584 checks. They cover the HTTP parser against split and pipelined input, the
+35 cases, 586 checks. They cover the HTTP parser against split and pipelined input, the
 WebSocket frame codec against the vectors published in RFC 6455 and against malformed
 frames, the histogram, both encoders and both decoders, and the running server over a real
 socket for all three transports.
