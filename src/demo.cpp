@@ -46,6 +46,15 @@ struct Stats {
   double max = 0.0;
 };
 
+// The first samples of any run carry one time costs: the connection, the first tick, the
+// pages the allocator has not touched yet. They are dropped rather than averaged in.
+constexpr std::size_t kWarmup = 5;
+
+std::vector<double> drop_warmup(std::vector<double> samples) {
+  if (samples.size() > kWarmup) samples.erase(samples.begin(), samples.begin() + kWarmup);
+  return samples;
+}
+
 Stats summarise(std::vector<double> samples) {
   Stats stats;
   if (samples.empty()) return stats;
@@ -81,50 +90,75 @@ void rule() { std::printf("  %s\n", std::string(74, '-').c_str()); }
 // ---------------------------------------------------------------------------
 // Measurement one: the two representations of the same snapshot
 // ---------------------------------------------------------------------------
+// Result of one timed operation: the median of several rounds, and the spread across
+// them. A single round on a busy desktop varies by a factor of two, so one number from
+// one round would be a number nobody could reproduce.
+struct Timing {
+  double median = 0.0;
+  double lowest = 0.0;
+  double highest = 0.0;
+};
+
+std::size_t g_sink = 0;  // keeps the timed work from being optimised away
+
+template <typename Work>
+Timing time_rounds(Work work, int rounds, int repetitions) {
+  std::vector<double> means;
+  for (int round = 0; round < rounds; ++round) {
+    const std::int64_t started = metrics::steady_microseconds();
+    for (int i = 0; i < repetitions; ++i) g_sink += work();
+    means.push_back(static_cast<double>(metrics::steady_microseconds() - started) / repetitions);
+  }
+  std::sort(means.begin(), means.end());
+  Timing timing;
+  timing.median = means[means.size() / 2];
+  timing.lowest = means.front();
+  timing.highest = means.back();
+  return timing;
+}
+
 void measure_formats(int repetitions) {
   const metrics::Snapshot snapshot = representative_snapshot();
   const std::string json_text = codec::to_json(snapshot);
   const std::string xml_text = codec::to_xml(snapshot);
+  const int rounds = 5;
+  const int per_round = repetitions / rounds;
 
-  // A sink the optimiser cannot discard, so the loop below really does the work.
-  std::size_t sink = 0;
+  const Timing json_encode =
+      time_rounds([&] { return codec::to_json(snapshot).size(); }, rounds, per_round);
+  const Timing xml_encode =
+      time_rounds([&] { return codec::to_xml(snapshot).size(); }, rounds, per_round);
+  const Timing json_parse =
+      time_rounds([&] { return codec::parse_json(json_text)->node_count(); }, rounds, per_round);
+  const Timing xml_parse =
+      time_rounds([&] { return codec::parse_xml(xml_text)->node_count(); }, rounds, per_round);
 
-  const std::int64_t json_encode_start = metrics::steady_microseconds();
-  for (int i = 0; i < repetitions; ++i) sink += codec::to_json(snapshot).size();
-  const double json_encode =
-      static_cast<double>(metrics::steady_microseconds() - json_encode_start) / repetitions;
-
-  const std::int64_t xml_encode_start = metrics::steady_microseconds();
-  for (int i = 0; i < repetitions; ++i) sink += codec::to_xml(snapshot).size();
-  const double xml_encode =
-      static_cast<double>(metrics::steady_microseconds() - xml_encode_start) / repetitions;
-
-  const std::int64_t json_parse_start = metrics::steady_microseconds();
-  for (int i = 0; i < repetitions; ++i) sink += codec::parse_json(json_text)->node_count();
-  const double json_parse =
-      static_cast<double>(metrics::steady_microseconds() - json_parse_start) / repetitions;
-
-  const std::int64_t xml_parse_start = metrics::steady_microseconds();
-  for (int i = 0; i < repetitions; ++i) sink += codec::parse_xml(xml_text)->node_count();
-  const double xml_parse =
-      static_cast<double>(metrics::steady_microseconds() - xml_parse_start) / repetitions;
-
-  std::printf("\nJSON against XML, same snapshot, %d repetitions each\n", repetitions);
+  std::printf("\nJSON against XML, same snapshot, %d rounds of %d repetitions\n", rounds,
+              per_round);
+  std::printf("Times are the median round, with the lowest and highest round in brackets.\n");
   rule();
-  std::printf("  %-8s %10s %14s %14s %12s\n", "format", "bytes", "encode (us)", "parse (us)",
-              "tree nodes");
+  std::printf("  %-6s %7s %10s %-15s %10s %-15s %6s\n", "format", "bytes", "encode us",
+              "[low, high]", "parse us", "[low, high]", "nodes");
   rule();
-  std::printf("  %-8s %10zu %14.3f %14.3f %12zu\n", "JSON", json_text.size(), json_encode,
-              json_parse, codec::parse_json(json_text)->node_count());
-  std::printf("  %-8s %10zu %14.3f %14.3f %12zu\n", "XML", xml_text.size(), xml_encode, xml_parse,
-              codec::parse_xml(xml_text)->node_count());
+  const auto row = [](const char* name, std::size_t bytes, const Timing& encode,
+                      const Timing& parse, std::size_t nodes) {
+    char encode_spread[32];
+    char parse_spread[32];
+    std::snprintf(encode_spread, sizeof(encode_spread), "[%.2f, %.2f]", encode.lowest,
+                  encode.highest);
+    std::snprintf(parse_spread, sizeof(parse_spread), "[%.2f, %.2f]", parse.lowest, parse.highest);
+    std::printf("  %-6s %7zu %10.3f %-15s %10.3f %-15s %6zu\n", name, bytes, encode.median,
+                encode_spread, parse.median, parse_spread, nodes);
+  };
+  row("JSON", json_text.size(), json_encode, json_parse,
+      codec::parse_json(json_text)->node_count());
+  row("XML", xml_text.size(), xml_encode, xml_parse, codec::parse_xml(xml_text)->node_count());
   rule();
   std::printf("  XML is %.1f%% larger, encodes %.2fx and parses %.2fx the JSON time.\n",
               100.0 * (static_cast<double>(xml_text.size()) /
                            static_cast<double>(json_text.size()) - 1.0),
-              json_encode > 0 ? xml_encode / json_encode : 0.0,
-              json_parse > 0 ? xml_parse / json_parse : 0.0);
-  if (sink == 0) std::printf("  (unreachable)\n");
+              json_encode.median > 0 ? xml_encode.median / json_encode.median : 0.0,
+              json_parse.median > 0 ? xml_parse.median / json_parse.median : 0.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +238,7 @@ TransportResult measure_websocket(std::uint16_t port, int wanted) {
       }
     }
   }
-  result.latency_ms = summarise(latencies);
+  result.latency_ms = summarise(drop_warmup(latencies));
   result.total_bytes = bytes;
   result.bytes_per_update = latencies.empty() ? 0.0 : bytes / static_cast<double>(latencies.size());
   return result;
@@ -257,7 +291,7 @@ TransportResult measure_sse(std::uint16_t port, int wanted) {
       previous_size = 0;
     }
   }
-  result.latency_ms = summarise(latencies);
+  result.latency_ms = summarise(drop_warmup(latencies));
   result.total_bytes = bytes;
   result.bytes_per_update = latencies.empty() ? 0.0 : bytes / static_cast<double>(latencies.size());
   return result;
@@ -310,7 +344,7 @@ TransportResult measure_polling(std::uint16_t port, int wanted, int interval_ms)
     // of updates arrives by each transport.
     std::this_thread::sleep_until(sent_at + std::chrono::milliseconds(interval_ms));
   }
-  result.latency_ms = summarise(latencies);
+  result.latency_ms = summarise(drop_warmup(latencies));
   result.total_bytes = bytes;
   result.bytes_per_update = latencies.empty() ? 0.0 : bytes / static_cast<double>(latencies.size());
   return result;
@@ -379,8 +413,8 @@ ScalingRow measure_scaling(std::uint16_t port, int clients, int window_ms, int i
     if (idle) std::this_thread::sleep_for(std::chrono::microseconds(300));
   }
 
-  const Stats stats = summarise(latencies);
-  row.delivered = stats.count;
+  const Stats stats = summarise(drop_warmup(latencies));
+  row.delivered = latencies.size();
   row.mean_latency_ms = stats.mean;
   row.p95_latency_ms = stats.p95;
   return row;
@@ -432,7 +466,7 @@ int main(int argc, char** argv) {
 
   const int interval_ms = 100;
   const int format_repetitions = bench_only ? 50000 : 20000;
-  const int updates = bench_only ? 60 : 20;
+  const int updates = (bench_only ? 60 : 20) + static_cast<int>(kWarmup);
 
   net::Library library;
   Options options;
