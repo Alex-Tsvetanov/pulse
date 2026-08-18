@@ -29,7 +29,7 @@ alternatives can be measured against each other instead of argued about.
 None. A C++20 compiler and CMake 3.20 are enough. There is no package manager step, no
 network fetch at configure time, and no optional feature that is on by default.
 
-The test runner is 120 lines in `tests/check.hpp`, the timing harness uses
+The test runner is 119 lines in `tests/check.hpp`, the timing harness uses
 `std::chrono::steady_clock`, and SHA-1 and Base64 are implemented in `src/websocket.cpp`
 because RFC 6455 needs them for the handshake. The only libraries linked are the ones the
 operating system already ships: `ws2_32` and `psapi` on Windows, pthreads elsewhere.
