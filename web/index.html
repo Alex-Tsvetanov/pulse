@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14'>&#9889;</text></svg>">
+</head>
+<body>
+
+<header class="bar">
+  <div class="identity">
+    <span class="mark" aria-hidden="true"></span>
+    <h1>Pulse</h1>
+    <p class="tagline">live process metrics over one socket</p>
+  </div>
+
+  <div class="controls">
+    <div class="switch" role="group" aria-label="Transport">
+      <button type="button" data-transport="ws" class="on">WebSocket</button>
+      <button type="button" data-transport="sse">SSE</button>
+      <button type="button" data-transport="poll">Polling</button>
+    </div>
+    <div class="switch" role="group" aria-label="Wire format">
+      <button type="button" data-format="json" class="on">JSON</button>
+      <button type="button" data-format="xml">XML</button>
+    </div>
+    <button type="button" id="theme" class="ghost" aria-label="Switch theme">Theme</button>
+  </div>
+
+  <p class="status" id="status" data-state="idle"><span class="dot"></span><span id="status-text">connecting</span></p>
+</header>
+
+<main class="board">
+
+  <section class="panel chart-panel" aria-labelledby="chart-title">
+    <div class="panel-head">
+      <h2 id="chart-title">Series</h2>
+      <label class="select">
+        <span class="sr-only">Metric to plot</span>
+        <select id="series">
+          <option value="cpu">CPU, percent of one core</option>
+          <option value="rss">Resident memory, MiB</option>
+          <option value="rps">Requests per second</option>
+          <option value="p50">Request handling p50, microseconds</option>
+        </select>
+      </label>
+    </div>
+    <figure class="chart" id="chart-figure">
+      <svg id="chart" viewBox="0 0 1000 280" role="img" aria-label="Live series">
+        <g id="grid-lines"></g>
+        <path id="area" class="area" d=""></path>
+        <path id="line" class="line" d=""></path>
+        <g id="points"></g>
+      </svg>
+      <figcaption id="readout" class="readout">hover a point for its value</figcaption>
+    </figure>
+    <div class="axis"><span id="axis-min">0</span><span id="axis-max">0</span></div>
+  </section>
+
+  <section class="panel lead" aria-labelledby="cpu-title">
+    <h2 id="cpu-title">CPU</h2>
+    <p class="huge"><span id="cpu">0.0</span><span class="unit">%</span></p>
+    <p class="sub">of one core, last interval</p>
+  </section>
+
+  <div class="stats">
+    <article class="panel stat"><h3>Resident memory</h3><p class="value"><span id="rss">0.0</span><span class="unit">MiB</span></p></article>
+    <article class="panel stat"><h3>Requests served</h3><p class="value"><span id="requests">0</span></p></article>
+    <article class="panel stat"><h3>Requests per second</h3><p class="value"><span id="rps">0.00</span></p></article>
+    <article class="panel stat"><h3>Uptime</h3><p class="value"><span id="uptime">0</span><span class="unit">s</span></p></article>
+    <article class="panel stat"><h3>WebSocket clients</h3><p class="value"><span id="ws">0</span></p></article>
+    <article class="panel stat"><h3>Event stream clients</h3><p class="value"><span id="sse">0</span></p></article>
+  </div>
+
+  <section class="panel" aria-labelledby="hist-title">
+    <h2 id="hist-title">Request handling time</h2>
+    <svg id="histogram" viewBox="0 0 520 170" role="img" aria-label="Latency histogram"></svg>
+    <dl class="quantiles">
+      <div><dt>p50</dt><dd><span id="p50">0</span> us</dd></div>
+      <div><dt>p90</dt><dd><span id="p90">0</span> us</dd></div>
+      <div><dt>p99</dt><dd><span id="p99">0</span> us</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel" aria-labelledby="wire-title">
+    <h2 id="wire-title">This connection</h2>
+    <dl class="wire">
+      <div><dt>transport</dt><dd id="w-transport">WebSocket</dd></div>
+      <div><dt>format</dt><dd id="w-format">JSON</dd></div>
+      <div><dt>updates received</dt><dd id="w-count">0</dd></div>
+      <div><dt>last payload</dt><dd><span id="w-bytes">0</span> bytes</dd></div>
+      <div><dt>decode time</dt><dd><span id="w-parse">0.000</span> ms</dd></div>
+      <div><dt>value age on arrival</dt><dd><span id="w-age">0.0</span> ms</dd></div>
+    </dl>
+    <pre class="payload" id="w-raw">waiting for the first message</pre>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>Server: C++20, own HTTP/1.1 and RFC 6455 implementation. Client: no framework, no build step.
+     The transport and the wire format both switch without reloading the page.</p>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

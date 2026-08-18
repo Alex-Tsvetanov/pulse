@@ -1,0 +1,316 @@
+/* Pulse dashboard styling.
+   Layout is CSS Grid throughout. Colour, spacing and timing are custom properties, so
+   the light and the dark theme differ only in the values at the top of this file. */
+
+:root {
+  color-scheme: light dark;
+
+  --ink:        #14181f;
+  --ink-soft:   #5b6472;
+  --ink-faint:  #8b94a3;
+  --paper:      #eceef2;
+  --surface:    #ffffff;
+  --surface-2:  #f5f6f9;
+  --edge:       #d8dce4;
+  --accent:     #1f6feb;
+  --accent-2:   #0a9396;
+  --warn:       #b54708;
+  --good:       #197741;
+  --grid-line:  #e4e7ee;
+  --shadow:     0 1px 2px rgba(20, 24, 31, .06), 0 8px 24px -12px rgba(20, 24, 31, .18);
+
+  --gap: 18px;
+  --radius: 14px;
+  --fast: 140ms;
+  --slow: 420ms;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* The dark values are named once. They are applied either by the explicit choice or by
+   the system preference, so the two paths cannot drift apart. */
+:root {
+  --dark-ink:        #e7ebf2;
+  --dark-ink-soft:   #9aa4b4;
+  --dark-ink-faint:  #6a7383;
+  --dark-paper:      #0c0f14;
+  --dark-surface:    #141922;
+  --dark-surface-2:  #1b2230;
+  --dark-edge:       #263041;
+  --dark-accent:     #64a2ff;
+  --dark-accent-2:   #4dd4c4;
+  --dark-warn:       #f0a35e;
+  --dark-good:       #56d38a;
+  --dark-grid-line:  #202939;
+  --dark-shadow:     0 1px 2px rgba(0, 0, 0, .5), 0 14px 40px -18px rgba(0, 0, 0, .8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --ink: var(--dark-ink); --ink-soft: var(--dark-ink-soft); --ink-faint: var(--dark-ink-faint);
+    --paper: var(--dark-paper); --surface: var(--dark-surface); --surface-2: var(--dark-surface-2);
+    --edge: var(--dark-edge); --accent: var(--dark-accent); --accent-2: var(--dark-accent-2);
+    --warn: var(--dark-warn); --good: var(--dark-good); --grid-line: var(--dark-grid-line);
+    --shadow: var(--dark-shadow);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: var(--dark-ink); --ink-soft: var(--dark-ink-soft); --ink-faint: var(--dark-ink-faint);
+  --paper: var(--dark-paper); --surface: var(--dark-surface); --surface-2: var(--dark-surface-2);
+  --edge: var(--dark-edge); --accent: var(--dark-accent); --accent-2: var(--dark-accent-2);
+  --warn: var(--dark-warn); --good: var(--dark-good); --grid-line: var(--dark-grid-line);
+  --shadow: var(--dark-shadow);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: clamp(16px, 3vw, 40px);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  transition: background var(--slow) var(--ease), color var(--slow) var(--ease);
+}
+
+h1, h2, h3 { margin: 0; font-weight: 620; letter-spacing: -.01em; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "identity controls" "status controls";
+  gap: 6px var(--gap);
+  align-items: center;
+  margin-bottom: calc(var(--gap) * 1.4);
+}
+
+.identity { grid-area: identity; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.identity h1 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -.03em; }
+
+.mark {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 60%, transparent);
+  animation: beat 1.6s var(--ease) infinite;
+  align-self: center;
+}
+
+@keyframes beat {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 12px color-mix(in oklab, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 0%, transparent); }
+}
+
+.tagline { margin: 0; color: var(--ink-faint); font-size: 13px; }
+
+.controls { grid-area: controls; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+.switch {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.switch button, .ghost {
+  font: inherit; font-size: 13px;
+  border: 0; border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease),
+              transform var(--fast) var(--ease);
+}
+
+.switch button:hover, .ghost:hover { color: var(--ink); background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.switch button:active { transform: scale(.96); }
+.switch button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+.ghost { border: 1px solid var(--edge); background: var(--surface-2); }
+
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.status {
+  grid-area: status;
+  margin: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--ink-soft);
+}
+
+.status .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ink-faint);
+  transition: background var(--slow) var(--ease), box-shadow var(--slow) var(--ease);
+}
+.status[data-state="live"]    .dot { background: var(--good); box-shadow: 0 0 0 4px color-mix(in oklab, var(--good) 20%, transparent); }
+.status[data-state="waiting"] .dot { background: var(--warn); }
+.status[data-state="down"]    .dot { background: #d3392b; }
+
+/* ---------------------------------------------------------------- board */
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  transition: background var(--slow) var(--ease), border-color var(--slow) var(--ease);
+}
+
+.panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-faint); }
+.panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-faint); font-weight: 560; }
+
+.chart-panel { grid-column: span 9; }
+.lead        { grid-column: span 3; }
+.stats       { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--gap); }
+.board > section:nth-of-type(3) { grid-column: span 5; }
+.board > section:nth-of-type(4) { grid-column: span 7; }
+
+@media (max-width: 1080px) {
+  .chart-panel, .lead { grid-column: span 12; }
+  .stats { grid-template-columns: repeat(3, 1fr); }
+  .board > section:nth-of-type(3), .board > section:nth-of-type(4) { grid-column: span 12; }
+}
+@media (max-width: 560px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .bar { grid-template-columns: 1fr; grid-template-areas: "identity" "status" "controls"; }
+  .controls { justify-content: flex-start; }
+}
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+.select select {
+  font: inherit; font-size: 13px;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 5px 9px;
+}
+
+/* ---------------------------------------------------------------- chart */
+
+.chart { margin: 12px 0 0; }
+#chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+.line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.area { fill: color-mix(in oklab, var(--accent) 14%, transparent); stroke: none; }
+
+/* The radius is set as an attribute so the points exist without this rule, and grown
+   here on hover. Every point is a document node, which is the reason the chart is SVG
+   and not a raster image. */
+#points circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  transition: r var(--fast) var(--ease), fill var(--fast) var(--ease);
+  cursor: crosshair;
+}
+#points circle:hover, #points circle.pinned { r: 6; fill: var(--accent); }
+
+#grid-lines line { stroke: var(--grid-line); stroke-width: 1; }
+
+.readout {
+  margin: 8px 0 0; font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+  min-height: 1.3em;
+  transition: color var(--fast) var(--ease);
+}
+.readout.active { color: var(--accent); }
+
+.axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+/* ---------------------------------------------------------------- values */
+
+.huge {
+  margin: 10px 0 2px;
+  font-family: var(--mono);
+  font-size: clamp(44px, 7vw, 68px);
+  line-height: 1;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+.huge .unit { font-size: .35em; color: var(--ink-faint); margin-left: 4px; letter-spacing: 0; }
+.sub { margin: 0; color: var(--ink-faint); font-size: 12px; }
+
+.stat .value {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.stat .value .unit { font-size: 12px; color: var(--ink-faint); margin-left: 4px; }
+
+/* A changed value briefly lifts its colour. This is the only motion tied to data, and
+   it exists so a still screenshot of two consecutive frames differs visibly. */
+.changed { animation: lift var(--slow) var(--ease); }
+@keyframes lift {
+  from { color: var(--accent-2); }
+  to   { color: inherit; }
+}
+
+/* ---------------------------------------------------------------- histogram */
+
+#histogram { width: 100%; height: auto; margin-top: 10px; display: block; }
+#histogram rect { fill: color-mix(in oklab, var(--accent) 65%, transparent); transition: height var(--slow) var(--ease), y var(--slow) var(--ease); }
+#histogram text { fill: var(--ink-faint); font-family: var(--mono); font-size: 11px; }
+
+.quantiles, .wire { display: grid; gap: 8px 18px; margin: 14px 0 0; }
+.quantiles { grid-template-columns: repeat(3, 1fr); }
+.wire { grid-template-columns: repeat(2, 1fr); }
+.quantiles dt, .wire dt { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-faint); }
+.quantiles dd, .wire dd { margin: 2px 0 0; font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+.payload {
+  margin: 14px 0 0;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-height: 132px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.foot { margin-top: var(--gap); color: var(--ink-faint); font-size: 12px; max-width: 68ch; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
