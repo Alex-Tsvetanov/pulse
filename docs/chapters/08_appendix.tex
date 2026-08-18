@@ -6,25 +6,101 @@
 
 \subsection*{Приложение А. Формат на съобщенията}
 
-Тук се дава пълното описание на видовете съобщения от договора между сървъра и клиента,
-описан в Раздел~\ref{sec:design}, заедно с по един пример за всяко съобщение в двата
-формата на обмена~\cite{xml10,rfc8259}. \TODO{таблица с полетата на всяко съобщение и
-примерите към нея}
+Пълното описание на видовете съобщения от договора между сървъра и клиента е дадено в
+Раздел~\ref{sec:design} \tabref{tab:messages}. Тук е добавено значението на всяко поле от
+стойностната снимка \tabref{tab:fields}, следвано от по един действителен пример във всеки
+от двата формата на обмена~\cite{xml10,rfc8259}. Примерите са снети от работещ сървър и не
+са редактирани.
+
+\begin{table}[H]
+\caption{Полета на стойностната снимка}
+\label{tab:fields}
+\centering
+\fontsize{11}{13.2}\selectfont
+\begin{tabular}{@{}L{2.1cm}L{2.4cm}L{8.0cm}@{}}
+\toprule
+\textbf{Поле} & \textbf{Вид} & \textbf{Значение} \\
+\midrule
+\code{seq}       & цяло   & пореден номер на извадката, започва от 1 \\
+\code{ts}        & цяло   & време на извадката, микросекунди от началото на епохата \\
+\code{uptime}    & реално & секунди от стартирането на сървъра \\
+\code{cpu}       & реално & процент от едно ядро за последния интервал \\
+\code{rss}       & цяло   & заета памет на процеса в байтове \\
+\code{requests}  & цяло   & общ брой обслужени заявки \\
+\code{rps}       & реално & заявки за секунда за последния интервал \\
+\code{bytes}     & цяло   & общо изпратени байтове \\
+\code{ws}        & цяло   & брой връзки по WebSocket \\
+\code{sse}       & цяло   & брой отворени потока от събития \\
+\code{p50}, \code{p90}, \code{p99} & реално & време за обработка на заявка в микросекунди \\
+\code{histogram} & списък & девет коша: горна граница и брой попадения \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[language={}, caption={Стойностна снимка в нотацията за обекти},
+                   label={lst:example-json}]
+{"seq":12,"ts":1787093650413132,"uptime":2.766,"cpu":0.00,"rss":5611520,
+ "requests":0,"rps":0.00,"bytes":0,"ws":0,"sse":0,
+ "p50":0.00,"p90":0.00,"p99":0.00,
+ "histogram":[{"le":50,"count":0},{"le":100,"count":0},{"le":200,"count":0},
+  {"le":500,"count":0},{"le":1000,"count":0},{"le":2000,"count":0},
+  {"le":5000,"count":0},{"le":10000,"count":0},{"le":null,"count":0}]}
+\end{lstlisting}
+
+\begin{lstlisting}[language={}, caption={Същата снимка в разширяемия език за разметка},
+                   label={lst:example-xml}]
+<?xml version="1.0" encoding="UTF-8"?><snapshot><seq>13</seq>
+<ts>1787093650648926</ts><uptime>3.002</uptime><cpu>0.00</cpu>
+<rss>5664768</rss><requests>1</requests><rps>4.24</rps><bytes>473</bytes>
+<ws>0</ws><sse>0</sse><p50>25.00</p50><p90>45.00</p90><p99>49.50</p99>
+<histogram><bucket le="50">1</bucket><bucket le="100">0</bucket>
+<bucket le="200">0</bucket><bucket le="500">0</bucket>
+<bucket le="1000">0</bucket><bucket le="2000">0</bucket>
+<bucket le="5000">0</bucket><bucket le="10000">0</bucket>
+<bucket le="inf">0</bucket></histogram></snapshot>
+\end{lstlisting}
+
+По мрежата и двата документа се предават на един ред. Тук са пренесени на няколко реда
+само за да се поберат в полето на страницата; байтовете за нов ред не са част от
+съобщението, а обемите в Раздел~\ref{sec:results} са за действително предаденото.
+
+Команда от клиента към сървъра е обект с поле \code{cmd} и незадължително поле
+\code{value}, а отговорът е потвърждение или съобщение за грешка:
+
+\begin{lstlisting}[language={}, caption={Команда, потвърждение и грешка},
+                   label={lst:example-cmd}]
+клиент -> сървър   {"cmd":"format","value":"xml"}
+сървър -> клиент   {"type":"ack","cmd":"format","value":"xml"}
+сървър -> клиент   {"type":"error","message":"unknown command"}
+\end{lstlisting}
 
 \subsection*{Приложение Б. Избрани части от изходния текст}
 
-Тук се включват анализаторът на кадри по WebSocket~\cite{rfc6455}, двата сериализатора и
-слоят за свързване на данни на клиента, с коментар на изходния текст.
-\TODO{листинги, добавени с \code{lstinputlisting} след като реализацията приключи}
+Разборът на един кадър по WebSocket~\cite{rfc6455} е даден в Раздел~\ref{sec:implementation}
+(Листинг~\ref{lst:decode}), а слоят за свързване на данни на клиента там
+(Листинг~\ref{lst:binding}). Тук следват двата сериализатора, които реализират един и същ
+вътрешен договор, и събирането на разделени съобщения.
+
+\lstinputlisting[language=C++, firstline=488, lastline=576,
+                 caption={Двата сериализатора, \code{src/codec.cpp}},
+                 label={lst:encoders}]{../src/codec.cpp}
+
+\lstinputlisting[language=C++, firstline=238, lastline=268,
+                 caption={Събиране на разделени съобщения, \code{src/websocket.cpp}},
+                 label={lst:assembler}]{../src/websocket.cpp}
 
 \subsection*{Приложение В. Екранни форми}
 
 Тук се включват екранните снимки на готовия интерфейс: изгледът с числовите показатели,
-изгледът с диаграмите и състоянието при прекъсната връзка. \TODO{екранни снимки с
-надписи под тях}
+изгледът с диаграмите и състоянието при прекъсната връзка, в светла и в тъмна тема.
+\TODO{екранни снимки с надписи под тях}
 
 \subsection*{Приложение Г. Отчет от измерванията}
 
-Тук се включва суровият отчет от измерванията, върху който стъпват таблиците в
-Раздел~\ref{sec:results}, заедно с описанието на средата от Раздел~\ref{sec:method}.
-\TODO{отчет от измерванията}
+По-долу е изведеното от \code{pulse-demo --bench} върху средата от
+Раздел~\ref{sec:method} \tabref{tab:environment}, без редакция. Всички числа в
+Раздел~\ref{sec:results} произхождат от този отчет.
+
+\lstinputlisting[language={}, basicstyle=\scriptsize\ttfamily, numbers=none,
+                 caption={Отчет от измерването, \code{measurements/report.txt}},
+                 label={lst:report}]{../measurements/report.txt}
