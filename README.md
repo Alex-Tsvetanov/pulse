@@ -120,6 +120,10 @@ WebSocket frame codec against the vectors published in RFC 6455 and against malf
 frames, the histogram, both encoders and both decoders, and the running server over a real
 socket for all three transports.
 
+A GitHub Actions workflow at `.github/workflows/ci.yml` runs the same CMake configure,
+build, and CTest suite on push and pull request to `main`. It does not run the measurement
+harness, browser checks, or documentation build.
+
 ## Measurements
 
 ```bash
